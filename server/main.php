@@ -1,15 +1,12 @@
 <?php
-error_reporting(E_ALL);
-//set_time_limit(40);
-
+    
 $logFile = "log.txt";
 $fh = fopen($logFile, 'w');
-
-mylog("Server Begin...");
-
 $address = 0;
 $port = 1234;
 $socket = stream_socket_server("udp://" . $address . ":" . $port, $errno, $errstr, STREAM_SERVER_BIND);
+
+init();
 
 if (!$socket) {
     die("$errstr ($errno)");
@@ -19,14 +16,31 @@ if (!$socket) {
 	
 do {
     $packet = stream_socket_recvfrom($socket, 128, 0, $peer);
+    receive_packet($packet, $peer);
+} while (true);
+
+
+/** Functions **/
+
+function receive_packet($packet, $peer) {
+    global $socket;
     mylog("Receive Packet:" . $packet);
     stream_socket_sendto($socket, $whoami . '/' . date('Y-m-d H:i:s') . '/' . $peer . "\r\n", 0, $peer);
-} while ($packet !== false);
+}
+
+function init() {
+    error_reporting(E_ALL);
+    //set_time_limit(40);
+    
+    require_once 'Socket.class.php';
+    
+    mylog("Server Begin...");
+}
 
 function mylog($data) {
-    echo $data;
-    fwrite($fh, $data);
-    return 0;
+    global $fh;
+    echo $data . "<br>";
+    fwrite($fh, $data . "\n");
 }
 
 fwrite ($fh, "\nEnd at: ".time());
