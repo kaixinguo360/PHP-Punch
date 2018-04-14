@@ -16,15 +16,24 @@ $proxys;
 
 do {
     $packet = stream_socket_recvfrom($socket, 128, 0, $peer);
-    if(!$proxys[$peer]) {
-        $proxys[$peer] = new Proxy($socket, $peer, $myloger);
-    } else {
-        $proxys[$peer] -> receive($packet);
-    }
+    check();
+    if(!$proxys[$peer])
+        $proxys[$peer] = new Proxy($socket, $peer);
+    $proxys[$peer] -> receive($packet);
 } while (true);
 
 
 /** Functions **/
+
+function check() {
+    global $proxys;
+    foreach ($proxys as $address => $proxy) {
+        if(!$proxy -> check()) {
+            mylog($proxys[$address] -> name . " -X- Lost !");
+            unset($proxys[$address]);
+        }
+    }
+}
 
 function getSocket($address, $port) {
 	
