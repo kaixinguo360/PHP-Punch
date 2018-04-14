@@ -1,4 +1,5 @@
 package com.my.p2p;
+
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
@@ -62,6 +63,9 @@ public class P2PClient implements Runnable {
     }
 
     public List<String>  list(int time) throws P2PClientCreateException {
+        if(status != 2) {
+            throw new P2PClientCreateException("Not Connect to server!");
+        }
         sendQueue.add("LIST");
         receiveQueue.clear();
         int slice = 500;
