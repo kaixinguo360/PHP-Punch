@@ -26,6 +26,15 @@ do {
 
 /** Functions **/
 
+function getList() {
+    global $proxys;
+    $list;
+    foreach ($proxys as $address => $proxy) {
+        $list = $list . $proxy -> name . "\n";
+    }
+    return $list;
+}
+
 function check() {
     global $proxys;
     foreach ($proxys as $address => $proxy) {
