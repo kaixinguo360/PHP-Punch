@@ -4,7 +4,7 @@
 /** Init **/
 
 error_reporting(E_ALL);
-define("LOG_LEVEL", 1);
+define("LOG_LEVEL", 2);
 require_once 'Proxy.class.php';
 require_once 'MyLoger.class.php';
 
@@ -25,6 +25,16 @@ do {
 
 
 /** Functions **/
+
+function getProxy($name) {
+    global $proxys;
+    foreach ($proxys as $address => $proxy) {
+        if($proxy -> name == $name) {
+            return $proxy;
+        }
+    }
+    return NULL;
+}
 
 function getList() {
     global $proxys;
