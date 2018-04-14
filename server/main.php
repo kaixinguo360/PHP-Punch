@@ -1,39 +1,30 @@
 <?php
 
-$myloger;
-$socket;
+
+/** Init **/
+
+error_reporting(E_ALL);
+require_once 'Proxy.class.php';
+require_once 'MyLoger.class.php';
+
+$myloger = new MyLoger("log.txt");
+$socket = getSocket(0, 1234);
 $proxys;
-init();
 
 do {
     $packet = stream_socket_recvfrom($socket, 128, 0, $peer);
-    receive_packet($packet, $peer);
-} while (true);
-
-
-/** Functions **/
-
-function receive_packet($packet, $peer) {
-    global $socket, $proxys, $myloger;
     if(!$proxys[$peer]) {
         $proxys[$peer] = new Proxy($socket, $peer, $myloger);
     } else {
         $proxys[$peer] -> receive($packet);
     }
-}
+} while (true);
 
-function init() {
-	global $myloger, $socket;
+
+/** Functions **/
+
+function getSocket($address, $port) {
 	
-    error_reporting(E_ALL);
-    
-    require_once 'Proxy.class.php';
-    require_once 'MyLoger.class.php';
-    
-    $myloger = new MyLoger("log.txt");
-    
-    $address = 0;
-    $port = 1234;
     $socket = stream_socket_server("udp://" . $address . ":" . $port, $errno, $errstr, STREAM_SERVER_BIND);
     
     if (!$socket) {
@@ -41,6 +32,8 @@ function init() {
     }
     
     mylog("Server Begin...");
+    
+    return $socket;
 }
 
 function mylog($data) {
