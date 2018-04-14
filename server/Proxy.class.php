@@ -75,7 +75,7 @@ class Proxy {
     }
     
     function mylog($data, $p = 0){
-        if($p < 1) {
+        if($p < LOG_LEVEL) {
             mylog($data);
         }
     }
