@@ -11,6 +11,9 @@ $myloger = new MyLoger("log.txt");
 $socket = getSocket(0, 1234);
 $proxys;
 
+
+/** Main Loop **/
+
 do {
     $packet = stream_socket_recvfrom($socket, 128, 0, $peer);
     if(!$proxys[$peer]) {
