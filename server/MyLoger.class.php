@@ -20,7 +20,7 @@ class MyLoger {
     /* 成员函数 */
     function log($data) {
         global $fh;
-        $data = date('Y-m-d H:i:s') . "  " . $data;
+        $data = date('Y-m-d H:i:s') . " " . $data;
         echo $data . "<br>";
         fwrite($fh, $data . "\n");
     }
