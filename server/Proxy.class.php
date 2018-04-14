@@ -12,12 +12,12 @@ class Proxy {
         $this -> socket = $socket1;
         $this -> status = 0;
         $this -> lastHB =time();
-        mylog("User " . $this -> address . " Login");
+        $this -> mylog("Host " . $this -> address . " Connect...");
     }
     
     /* 成员函数 */
     function receive($data){
-        mylog($this -> name . " --> " . $data);
+        $this -> mylog($this -> name . " --> " . $data, 1);
         $this -> lastHB = time();
         
         if($data == "SYN" && $this -> status != 0) {
@@ -44,25 +44,39 @@ class Proxy {
             if($data == "OK") {
                 $this -> status = 3;
                 $this -> send("OK");
+                $this -> mylog($this -> name . " >>> Login!");
             } else {
                 $this -> status = -1;
+            }
+        } else if($this -> status == 3) {
+            if($data != "HB") {
+                $this -> toDo($data);
             }
         }
     }
     
+    function toDo($data){
+        
+    }
+    
     function check(){
         $time = time() - $this -> lastHB;
-        mylog($this -> name . " " . $time . " = " . time() . "-" . $this -> lastHB);
         
-        if($time > 15) {
-            return false;
-        } else {
+        if($time < 15) {
             return true;
+        } else {
+            return false;
         }
     }
     
     function send($data){
-        mylog($this -> name . " <-- " . $data);
+        $this -> mylog($this -> name . " <-- " . $data, 1);
         stream_socket_sendto($this -> socket, $data, 0, $this -> address);
+    }
+    
+    function mylog($data, $p = 0){
+        if($p < 1) {
+            mylog($data);
+        }
     }
 }
