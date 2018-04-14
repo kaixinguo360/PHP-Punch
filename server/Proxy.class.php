@@ -37,18 +37,11 @@ class Proxy {
                 $this -> name = substr($data,3);
                 $this -> status = 2;
                 $this -> send("ACCEPT");
-            } else {
-                $this -> status = -1;
-            }
-        } else if($this -> status == 2) {
-            if($data == "OK") {
-                $this -> status = 3;
-                $this -> send("OK");
                 $this -> mylog($this -> name . " >>> Login!");
             } else {
                 $this -> status = -1;
             }
-        } else if($this -> status == 3) {
+        } else if($this -> status == 2) {
             if($data != "HB") {
                 $this -> toDo($data);
             }
