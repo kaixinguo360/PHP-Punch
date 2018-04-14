@@ -212,8 +212,8 @@ public class P2PClient implements Runnable {
         try {
             P2PClient p2pClient = new P2PClient("test.kaixinguo.site", 1234, "User-" + (int) (Math.random() * 1000));
             p2pClient.connect();
-            Thread.sleep(1000);
-            //p2pClient.close();
+            Thread.sleep(5000);
+            p2pClient.close();
         } catch (P2PClientCreateException | InterruptedException e) {
             e.printStackTrace();
         }
