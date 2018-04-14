@@ -24,9 +24,10 @@ public class P2PClient implements Runnable {
     private ArrayList<String> receiveQueue = new ArrayList<>();
 
     private String targetName = "";
+    private int selfPort = -1;
+
     private String targetAddress = "";
     private int targetPort = -1;
-    private int selfPort = -1;
 
     private int status = -2;
 
@@ -89,10 +90,27 @@ public class P2PClient implements Runnable {
         throw new P2PClientCreateException("List Failed!");
     }
 
-    public DatagramSocket getSocketTo(String target) {
+    public DatagramSocket getSocketTo(String target) throws SocketException, P2PClientCreateException {
+        return  getSocketTo(target, 10000);
+    }
+
+    public DatagramSocket getSocketTo(String target, int time) throws SocketException, P2PClientCreateException {
         status = 3;
-        this.targetName = target;
-        return null;
+        targetName = target;
+        selfPort = (int) (Math.random() * 1000) + 1000;
+
+        int slice = 500;
+        int times = time / slice;
+        int i = 0;
+        while(++i <= times) {
+            if(status == 5) {
+                DatagramSocket P2PSocket = new DatagramSocket(selfPort);
+                return P2PSocket;
+            }
+            try { Thread.sleep(slice);} catch (InterruptedException ignored) {}
+        }
+        disConnect();
+        throw new P2PClientCreateException("Connect Failed!");
     }
 
     public int getStatus() {
@@ -235,9 +253,14 @@ public class P2PClient implements Runnable {
             log("< < " + targetName);
             sendMessageToServer("CNT" + targetName);
         } else if(status == 4) {
-            selfPort = (int) (Math.random() * 1000) + 1000;
             sendMessageToServer("CNTPORT" + selfPort);
         }
+    }
+
+    private void disConnect() {
+        status = 2;
+        targetName = "";
+        selfPort = -1;
     }
 
     private void sendMessageToServer(String message) throws P2PClientCreateException {
@@ -319,7 +342,8 @@ public class P2PClient implements Runnable {
                             System.out.println("User[" + ++j + "]: " + name);
                         }
                         if(target != null) {
-                            p2pClient.getSocketTo(target);
+                            DatagramSocket P2PSocket = p2pClient.getSocketTo(target, 20000);
+                            System.out.println("Create P2PSocket Success! -- " + P2PSocket);
                         }
                     } catch (P2PClientCreateException ignored) {
                         System.out.println("Fail");
