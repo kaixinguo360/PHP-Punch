@@ -4,6 +4,8 @@ import java.net.*;
 
 public class P2PClient {
 
+    private static final int LOG_LEVEL = 2;
+
     private InetAddress address;
     private int port;
     private DatagramSocket socket;
@@ -18,14 +20,20 @@ public class P2PClient {
     private int status = 0;
 
     public P2PClient(String host, int port, String name) throws P2PClientCreateException {
+        this(host, port, name, -1);
+    }
+
+    public P2PClient(String host, int port, String name, int localPort) throws P2PClientCreateException {
         try
         {
             address = InetAddress.getByName(host);
             this.port = port;
             this.name = name;
-            socket = new DatagramSocket(2005);
-            log("Remote_Address: " + address);
-            log("Remote_Port: " + port);
+            if(localPort < 0) {
+                socket = new DatagramSocket();
+            } else {
+                socket = new DatagramSocket(localPort);
+            }
             init();
         } catch (SocketException | UnknownHostException e) {
             e.printStackTrace();
@@ -35,6 +43,9 @@ public class P2PClient {
 
     private void init() throws P2PClientCreateException {
         status = 0;
+        log("Server_Address:  " + address);
+        log("Server_Port:     " + port);
+        log("Connecting to server...");
         sendMessageToServer("SYN");
         waitServer();
     }
@@ -42,7 +53,7 @@ public class P2PClient {
     private void waitServer() throws P2PClientCreateException {
         while(true) {
             try {
-                String message = receiveMessageFromServer(3000, 1);
+                String message = receiveMessageFromServer(5000, 1);
                 //log("--> " + message);
                 receive(message);
             } catch (TimeOutException e) {
@@ -53,39 +64,48 @@ public class P2PClient {
     }
 
     private void receive(String data) throws P2PClientCreateException {
+        log("--> " + data, 1);
+
+        if("RETRY".equals(data)) {
+            status = 0;
+            log("<<< Lost!");
+            timeOut();
+            return;
+        }
         if(status == 0) {
             if("ACK".equals(data)) {
-                log("--> ACK");
                 status = 1;
                 timeOut();
             }
         } else if(status == 1) {
             if("ACCEPT".equals(data)) {
-                log("--> ACCEPT");
                 status = 2;
                 timeOut();
             }
         } else if(status == 2) {
             if("OK".equals(data)) {
-                log("--> OK");
                 status = 3;
+                log(">>> Login!");
             }
         } else if(status == 3) {
-            log("--> " + data);
+            toDo(data);
         }
     }
 
     private void timeOut() throws P2PClientCreateException {
         if(status == 0) {
             sendMessageToServer("SYN");
-            log("<-- SYN");
         } else if(status == 1) {
             sendMessageToServer("ACK" + name);
-            log("<-- ACK" + name);
         } else if(status == 2) {
             sendMessageToServer("OK");
-            log("<-- OK");
+        } else if(status == 3) {
+            sendMessageToServer("HB");
         }
+    }
+
+    private void toDo(String data) {
+
     }
 
     private void sendMessageToServer(String message) throws P2PClientCreateException {
@@ -99,6 +119,7 @@ public class P2PClient {
 
         try {
             socket.send(outPacket);
+            log("<-- " + message, 1);
         } catch (IOException e) {
             e.printStackTrace();
             throw new P2PClientCreateException("Send Message to Server fail");
@@ -153,15 +174,21 @@ public class P2PClient {
         }
     }
 
-    public static void main(String[] args) {
-        try {
-            P2PClient client = new P2PClient("test.kaixinguo.site", 1234, "Kaixinguo");
-        } catch (P2PClient.P2PClientCreateException e) {
-            e.printStackTrace();
+    private void log(String message) {
+        log(message, 0);
+    }
+
+    private void log(String message, int p) {
+        if(p < LOG_LEVEL) {
+            System.out.println(message);
         }
     }
 
-    private void log(String message) {
-        System.out.println(message);
+    public static void main(String[] args) {
+        try {
+            P2PClient client = new P2PClient("test.kaixinguo.site", 1234, "User-" + (int) (Math.random() * 1000));
+        } catch (P2PClient.P2PClientCreateException e) {
+            e.printStackTrace();
+        }
     }
 }
