@@ -4,7 +4,7 @@ class Proxy {
     /* 成员变量 */
     var $address, $socket, $name;
     var $status, $lastHB;
-    var $target, $targetPort;
+    var $target;
     var $selfPort;
     
     /* 构造函数 */
@@ -59,7 +59,6 @@ class Proxy {
         } else if(substr($data,0, 3) == "CNT") {
             $this -> status = 3;
             $this -> prepare($data);
-            
         }
     }
     
@@ -67,8 +66,10 @@ class Proxy {
         if($data == "HB") {
             return;
         } else if(substr($data, 0, 3) != "CNT") {
-            $this -> status = 2;
-            $this -> send("NON");
+            $this -> disConnect();
+            return;
+        } else if(substr($data, 0, 3) == "NON") {
+            $this -> disConnect();
             return;
         }
         $data = substr($data, 3);
@@ -82,19 +83,17 @@ class Proxy {
                 $this -> status = 4;
                 $this -> mylog($this -> name . " > > Try CNT " . $data);
             } else {
-                $this -> status = 2;
-                $this -> send("NON");
+                $this -> disConnect();
             }
         } else if($this -> status == 4) {
             if(substr($data, 0, 4) == "PORT") {
                 $this -> selfPort = substr($data, 4);
                 if($this -> target -> selfPort) {
                     $this -> status = 5;
-                    $this -> send("CNTOK" . $this -> selfPort);
+                    $this -> send("CNTOK" . $this -> target -> selfPort);
                 }
             } else {
-                $this -> status = 2;
-                $this -> send("NON");
+                $this -> disConnect();
             }
         }
     }
@@ -105,8 +104,16 @@ class Proxy {
     
     function connect($porxy){
         $data = $this -> name . ":" . $this -> address;
-        
+        $this -> status = 4;
+        $this -> target = $porxy;
         return $data;
+    }
+    
+    function disConnect(){
+        $this -> status = 2;
+        $this -> send("NON");
+        $this -> target = NULL;
+        $this -> selfPort = NULL;
     }
     
     function check(){
