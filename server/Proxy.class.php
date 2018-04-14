@@ -16,7 +16,13 @@ class Proxy {
     /* 成员函数 */
     function receive($packet){
         global $address, $socket;
-        mylog("User " . $address . " Send Packet: " . $packet);
-        stream_socket_sendto($socket, $whoami . '/' . date('Y-m-d H:i:s') . '/' . $address . "\r\n", 0, $address);
+        mylog("<-- " . $address . ":" . $packet);
+        $this -> send($whoami . '/' . date('Y-m-d H:i:s') . '/' . $address);
+    }
+    
+    function send($packet){
+        global $address, $socket;
+        mylog("--> " . $address . ":" . $packet);
+        stream_socket_sendto($socket, $packet, 0, $address);
     }
 }
