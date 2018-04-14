@@ -49,7 +49,9 @@ class Proxy {
     }
     
     function toDo($data){
-        
+        if($data == "LIST") {
+            $this -> send(getList());
+        }
     }
     
     function check(){
