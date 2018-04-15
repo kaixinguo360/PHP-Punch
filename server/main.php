@@ -17,10 +17,14 @@ $proxys;
 
 do {
     $packet = stream_socket_recvfrom($socket, 128, 0, $peer);
-    check();
-    if(!$proxys[$peer])
-        $proxys[$peer] = new Proxy($socket, $peer);
-    $proxys[$peer] -> receive($packet);
+    if($socket == "WHOAMI") {
+        stream_socket_sendto($socket, $peer, 0, $peer);
+    } else {
+        check();
+        if(!$proxys[$peer])
+            $proxys[$peer] = new Proxy($socket, $peer);
+        $proxys[$peer] -> receive($packet);
+    }
 } while (true);
 
 
