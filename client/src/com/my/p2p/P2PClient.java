@@ -8,7 +8,7 @@ import java.util.List;
 
 public class P2PClient implements Runnable {
 
-    private static int LOG_LEVEL = 2;
+    private static int LOG_LEVEL = 1;
     private static int DATA_LEN = 1024;
 
     private InetAddress address;
@@ -22,6 +22,7 @@ public class P2PClient implements Runnable {
     private DatagramPacket outPacket;
     private ArrayList<String> sendQueue = new ArrayList<>();
     private ArrayList<String> receiveQueue = new ArrayList<>();
+    private ArrayList<String> reqQueue = new ArrayList<>();
 
     private String targetName = "";
     private int selfPort = -1;
@@ -29,6 +30,7 @@ public class P2PClient implements Runnable {
     private String targetAddress = "";
     private int targetPort = -1;
 
+    private int updateFlag = 0;
     private int status = -2;
 
     private Thread thread;
@@ -65,13 +67,13 @@ public class P2PClient implements Runnable {
         }
     }
 
-    public List<String> list() throws P2PClientCreateException {
+    public List<String> list() throws P2PClientException {
         return list(5000);
     }
 
-    public List<String>  list(int time) throws P2PClientCreateException {
+    public List<String>  list(int time) throws P2PClientException {
         if(status != 2) {
-            throw new P2PClientCreateException("Not Connect to server!");
+            throw new P2PClientException("Not Connect to server!");
         }
         sendQueue.clear();
         receiveQueue.clear();
@@ -87,34 +89,61 @@ public class P2PClient implements Runnable {
             }
             try { Thread.sleep(slice);} catch (InterruptedException ignored) {}
         }
-        throw new P2PClientCreateException("List Failed!");
+        throw new P2PClientException("List Failed!");
     }
 
-    public DatagramSocket getSocketTo(String target) throws SocketException, P2PClientCreateException {
+    public P2PSocket getSocketTo(String target) throws SocketException, P2PClientException {
         return  getSocketTo(target, 10000);
     }
 
-    public DatagramSocket getSocketTo(String target, int time) throws SocketException, P2PClientCreateException {
-        status = 3;
-        targetName = target;
-        selfPort = (int) (Math.random() * 1000) + 1000;
+    public P2PSocket getSocketTo(String target, int time) throws SocketException, P2PClientException {
+        connectTo(target);
 
         int slice = 500;
         int times = time / slice;
         int i = 0;
         while(++i <= times) {
             if(status == 5) {
-                DatagramSocket P2PSocket = new DatagramSocket(selfPort);
-                return P2PSocket;
+                P2PSocket p2pSocket;
+                try {
+                    p2pSocket = new P2PSocket(targetAddress, targetPort, selfPort);
+                } catch (UnknownHostException e) {
+                    throw new P2PClientException("Create Socket Fail!");
+                }
+                log("<+> Create Socket: " + p2pSocket);
+                int j = 0;
+                while(++j <= 30) {
+                    p2pSocket.send("Hello");
+                    try {
+                        String hello = p2pSocket.receive(1000);
+                        if("Hello".equals(hello)) {
+                            return p2pSocket;
+                        }
+                    } catch (TimeOutException ignored) {}
+                }
+                throw new P2PClientException("Create Socket Time Out!");
             }
             try { Thread.sleep(slice);} catch (InterruptedException ignored) {}
         }
         disConnect();
-        throw new P2PClientCreateException("Connect Failed!");
+        throw new P2PClientException("Connect Failed!");
     }
 
     public int getStatus() {
         return this.status;
+    }
+
+    public List<String> getReq() {
+        return reqQueue;
+    }
+
+    public P2PSocket agreeReq(int index, int time) throws P2PClientException, SocketException {
+        if(index < reqQueue.size()) {
+            String name = reqQueue.get(index);
+            reqQueue.remove(index);
+            return getSocketTo(name, time);
+        }
+        throw new P2PClientException("No That Request!");
     }
 
     public String getName() {
@@ -130,7 +159,7 @@ public class P2PClient implements Runnable {
         try {
             sendMessageToServer("SYN");
             mainLoop();
-        } catch (P2PClientCreateException e) {
+        } catch (P2PClientException e) {
             e.printStackTrace();
         }
         log("Connect Closed");
@@ -138,11 +167,11 @@ public class P2PClient implements Runnable {
 
 
     /** --------------------------------- Private --------------------------------- **/
-    private void mainLoop() throws P2PClientCreateException {
+    private void mainLoop() throws P2PClientException {
         try {
             socket.setSoTimeout(500);
         } catch (SocketException e) {
-            throw new P2PClientCreateException("Set out time fail!");
+            throw new P2PClientException("Set out time fail!");
         }
 
         int i = 0;
@@ -154,7 +183,8 @@ public class P2PClient implements Runnable {
                 //log("--> " + message);
                 receive(message);
             } catch (IOException e) {
-                if(++i >= 10) {
+                if(++i >= 4 || updateFlag != 0) {
+                    updateFlag = 0;
                     i = 0;
                     timeOut();
                 }
@@ -165,7 +195,7 @@ public class P2PClient implements Runnable {
         }
     }
 
-    private void toSend() throws P2PClientCreateException {
+    private void toSend() throws P2PClientException {
         if(!sendQueue.isEmpty()) {
             String data = sendQueue.get(0);
             sendQueue.remove(0);
@@ -175,11 +205,16 @@ public class P2PClient implements Runnable {
     }
 
     private void toReceive(String data) {
-        log("--> " + data, 1);
-        receiveQueue.add(data);
+        if(data.length() > 4 && "LIST".equals(data.substring(0,4))) {
+            receiveQueue.add(data.substring(4));
+        } else if(data.length() > 3 && "REQ".equals(data.substring(0,3))) {
+            String name = data.substring(3);
+            log("> > " + name);
+            reqQueue.add(name);
+        }
     }
 
-    private void receive(String data) throws P2PClientCreateException {
+    private void receive(String data) throws P2PClientException {
         log("--> " + data, 1);
 
         if("RETRY".equals(data)) {
@@ -205,9 +240,13 @@ public class P2PClient implements Runnable {
         }
     }
 
-    private void timeOut() throws P2PClientCreateException {
+    private int lastHB = 0;
+    private void timeOut() throws P2PClientException {
         if(status >= 2) {
-            sendMessageToServer("HB");
+            if(++lastHB >= 3) {
+                lastHB = 0;
+                sendMessageToServer("HB");
+            }
         }
         if(status == 0) {
             sendMessageToServer("SYN");
@@ -218,7 +257,7 @@ public class P2PClient implements Runnable {
         }
     }
 
-    private void receiveP2P(String data) throws P2PClientCreateException {
+    private void receiveP2P(String data) throws P2PClientException {
         if("NON".equals(data)) {
             status = 3;
             log("<X< Connect Fail -- Retry...");
@@ -241,29 +280,44 @@ public class P2PClient implements Runnable {
                 targetPort = Integer.valueOf(data.substring(5));
                 status = 5;
                 log("<-< Prepared! -- Begin to build socket...");
-                log("Detial: Address -- " + targetAddress);
-                log("Detial: Port    -- " + targetPort);
+                log("    Self:   Name     -- " + name);
+                log("            Port     -- " + selfPort);
+                log("    Target: Name     -- " + targetName);
+                log("            Port     -- " + targetPort);
+                log("            Address  -- " + targetAddress);
                 timeOut();
             }
         }
     }
 
-    private void timeOutP2P() throws P2PClientCreateException {
+    private void timeOutP2P() throws P2PClientException {
         if(status == 3) {
-            log("< < " + targetName);
-            sendMessageToServer("CNT" + targetName);
+            if(targetName != "") {
+                log("< < " + targetName);
+                sendMessageToServer("CNT" + targetName);
+            } else {
+                disConnect();
+            }
         } else if(status == 4) {
             sendMessageToServer("CNTPORT" + selfPort);
         }
+    }
+
+    private void connectTo(String target) {
+        status = 3;
+        targetName = target;
+        selfPort = (int) (Math.random() * 1000) + 1000;
+        updateFlag = 1;
     }
 
     private void disConnect() {
         status = 2;
         targetName = "";
         selfPort = -1;
+        log("<X< Stop Connect!");
     }
 
-    private void sendMessageToServer(String message) throws P2PClientCreateException {
+    private void sendMessageToServer(String message) throws P2PClientException {
         byte[] bytes = message.getBytes();
 
         outPacket = new DatagramPacket(bytes, bytes.length, address, port);
@@ -277,7 +331,7 @@ public class P2PClient implements Runnable {
             log("<-- " + message, 1);
         } catch (IOException e) {
             e.printStackTrace();
-            throw new P2PClientCreateException("Send Message to Server fail");
+            throw new P2PClientException("Send Message to Server fail");
         }
     }
 
@@ -287,17 +341,17 @@ public class P2PClient implements Runnable {
 
     private void log(String message, int p) {
         if(p < LOG_LEVEL) {
-            System.out.println(message);
+            System.out.println(name + " " + message);
         }
     }
 
 
     /** --------------------------------- Inner Class --------------------------------- **/
-    public class P2PClientCreateException extends Exception {
+    public class P2PClientException extends Exception {
 
         String message;
 
-        public P2PClientCreateException(String message) {
+        public P2PClientException(String message) {
             this.message = message;
         }
 
@@ -321,38 +375,137 @@ public class P2PClient implements Runnable {
         }
     }
 
+    public class P2PSocket {
+
+        private InetAddress address;
+        private int port;
+        private int selfPort;
+
+        private byte[] inBuff = new byte[DATA_LEN];
+        private DatagramPacket packet;
+        private DatagramSocket socket;
+
+        private P2PSocket(String address, int port, int selfPort) throws SocketException, UnknownHostException {
+            this.address = InetAddress.getByName(address);
+            this.port = selfPort;
+            this.selfPort = selfPort;
+            packet = new DatagramPacket(inBuff, inBuff.length, this.address, port);
+            socket = new DatagramSocket(selfPort);
+        }
+
+        public DatagramSocket getSocket() {
+            return socket;
+        }
+
+        public InetAddress getAddress() {
+            return address;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public int getSelfPort() {
+            return selfPort;
+        }
+
+        public String receive(int time) throws TimeOutException {
+            try {
+                socket.setSoTimeout(time);
+            } catch (SocketException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                socket.receive(packet);
+                String message = new String(packet.getData());
+                log("---> " + message, 1);
+                return message;
+            } catch (IOException ignored) {}
+
+            throw new TimeOutException("Time Out");
+        }
+
+        public void send(String message) throws P2PClientException {
+            byte[] bytes = message.getBytes();
+
+            outPacket = new DatagramPacket(bytes, bytes.length, address, port);
+            outPacket.setData(bytes);
+            outPacket.setLength(bytes.length);
+            outPacket.setAddress(address);
+            outPacket.setPort(port);
+
+            try {
+                socket.send(outPacket);
+                log("<--- " + message, 1);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new P2PClientException("Send Message to " + address + " fail");
+            }
+        }
+    }
+
     /** --------------------------------- Test --------------------------------- **/
     public static void main(String[] args) throws UnknownHostException {
+        P2PClient p2pClient = null;
+
         try {
-            P2PClient p2pClient = new P2PClient("test.kaixinguo.site", 1234, "User-" + (int) (Math.random() * 1000));
-            p2pClient.connect();
-            int i = 0;
-            while(i++ < 100) {
-                Thread.sleep(3000);
-                if(p2pClient.getStatus() == 2) {
+            p2pClient = new P2PClient("test.kaixinguo.site", 1234, "User-" + (int) (Math.random() * 1000));
+        } catch (SocketException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        p2pClient.connect();
+        int i = 0;
+        while(i++ < 100) {
+            try { Thread.sleep(3000);} catch (InterruptedException ignored) {}
+
+            if(p2pClient.getStatus() == 2) {
+                List reqs = p2pClient.getReq();
+                if(!reqs.isEmpty()) {
+                    System.out.println("Receive Request: " + reqs.get(0));
                     try {
-                        System.out.println("List...");
-                        List<String> names = p2pClient.list();
-                        String target = null;
-                        int j = 0;
-                        for(String name : names) {
-                            if(!p2pClient.getName().equals(name)) {
-                                target = name;
-                            }
-                            System.out.println("User[" + ++j + "]: " + name);
+                        P2PSocket p2pSocket = p2pClient.agreeReq(0, 20000);
+                        System.out.println("Create P2PSocket Success! -- " + p2pSocket);
+                    } catch (P2PClientException | SocketException e) {
+                        System.out.println("- Connect Fail...");
+                    }
+                    continue;
+                }
+
+                List<String> names = null;
+                try {
+                    System.out.println("- List...");
+                    names = p2pClient.list();
+                } catch (P2PClientException ignored) {
+                    System.out.println("- List Fail");
+                }
+                String target = null;
+                if(names != null){
+                    int j = 0;
+                    System.out.println("List Of User(" + names.size() + "): ");
+                    for(String name : names) {
+                        if(p2pClient.name.equals(name)) {
+                            System.out.println("    [" + ++j + "] " + name + " [Self]");
+                        } else {
+                            target = name;
+                            System.out.println("    [" + ++j + "] " + name);
                         }
-                        if(target != null) {
-                            DatagramSocket P2PSocket = p2pClient.getSocketTo(target, 20000);
-                            System.out.println("Create P2PSocket Success! -- " + P2PSocket);
-                        }
-                    } catch (P2PClientCreateException ignored) {
-                        System.out.println("Fail");
+                    }
+                }
+                if(target != null) {
+                    try {
+                        System.out.println("- Connect to " + target + "...");
+                        P2PSocket p2pSocket = p2pClient.getSocketTo(target, 20000);
+                        System.out.println("Create P2PSocket Success! -- " + p2pSocket);
+                    } catch (P2PClientException | SocketException e) {
+                        System.out.println("- Connect Fail...");
                     }
                 }
             }
-            //p2pClient.close();
-        } catch (InterruptedException | SocketException e) {
-            e.printStackTrace();
         }
+        //p2pClient.close();
+        System.out.println("EXIT");
     }
 }
