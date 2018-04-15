@@ -102,6 +102,10 @@ public class P2PClient implements Runnable {
     }
 
     public P2PSocket getSocketTo(String target, int time) throws SocketException, P2PClientException {
+        return  getSocketTo(target, time, 1);
+    }
+
+    public P2PSocket getSocketTo(String target, int time, int retry) throws SocketException, P2PClientException {
 
         P2PSocket p2pSocket = null;
         try {
@@ -110,13 +114,22 @@ public class P2PClient implements Runnable {
             throw new P2PClientException("Create P2PClient Failed!");
         }
 
+        connectTo(target, p2pSocket.selfPort);
+        log("< < " + targetName);
+
         int slice = 500;
         int times = time / slice;
         int i = 0;
+        int trytime = 0;
         while(++i <= times) {
             if(status == 2) {
-                connectTo(target, p2pSocket.selfPort);
-                log("< < " + targetName);
+                if(++trytime < retry) {
+                    connectTo(target, p2pSocket.selfPort);
+                    log("< < " + targetName + "Retry...", 1);
+                } else {
+                    closeConnect();
+                    throw new P2PClientException("Retry time out!");
+                }
             } else if(status == 5) {
                 try {
                     p2pSocket.setTarget(targetAddress, targetPort);
