@@ -4,6 +4,7 @@
 /** Init **/
 
 error_reporting(E_ALL);
+set_time_limit(0);
 define("LOG_LEVEL", 1);
 require_once 'Proxy.class.php';
 require_once 'MyLoger.class.php';
