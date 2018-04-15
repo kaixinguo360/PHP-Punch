@@ -39,7 +39,8 @@ class Proxy {
                 $this -> name = substr($data,3);
                 $this -> status = 2;
                 $this -> send("ACCEPT");
-                $this -> mylog($this -> name . " >>> Login!");
+                $this -> mylog("Host " . $this -> address . " >>> " . $this -> name);
+                //$this -> mylog($this -> name . " >>> Login! (" . $this -> address . ")");
             } else {
                 $this -> status = -1;
             }
@@ -55,7 +56,7 @@ class Proxy {
         if($this -> status >= 3) {
             $this -> prepare($data);
         } else if($data == "LIST") {
-            $this -> send(getList());
+            $this -> send("LIST" . getList());
         } else if(substr($data,0, 3) == "CNT") {
             $this -> status = 3;
             $this -> prepare($data);
@@ -76,12 +77,16 @@ class Proxy {
         if($this -> status >= 5) {
             $this -> p2p($data);
         } else if($this -> status == 3) {
-            $this -> target = getProxy($data);
-            if($this -> target) {
-                $info = $this -> target -> connect($this);
-                $this -> send("CNTACCEPT:" . $info);
-                $this -> status = 4;
-                $this -> mylog($this -> name . " > > Try CNT " . $data);
+            $target = getProxy($data);
+            if($target && ($target -> target == NULL || $target -> target == $this)) {
+                $info = $target -> touch($this);
+                $this -> target = $target;
+                $this -> mylog($this -> name . " > > " . $data . " Try...");
+                if($target -> target == $this) {
+                    $this -> send("CNTACCEPT:" . $info);
+                    $this -> status = 4;
+                    $this -> mylog($this -> name . " >*> " . $data . " Accpet...");
+                }
             } else {
                 $this -> disConnect();
             }
@@ -91,6 +96,7 @@ class Proxy {
                 if($this -> target -> selfPort) {
                     $this -> status = 5;
                     $this -> send("CNTOK" . $this -> target -> selfPort);
+                    $this -> mylog($this -> name . " >-> " . $this -> target -> name . " Prepared!");
                 }
             } else {
                 $this -> disConnect();
@@ -102,10 +108,12 @@ class Proxy {
         
     }
     
-    function connect($porxy){
+    function touch($porxy){
+        if($this -> status == 2) {
+            $this -> send("REQ" . $porxy -> name);
+        }
+        
         $data = $this -> name . ":" . $this -> address;
-        $this -> status = 4;
-        $this -> target = $porxy;
         return $data;
     }
     
