@@ -5,6 +5,7 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 public class P2PClient implements Runnable {
 
@@ -24,6 +25,8 @@ public class P2PClient implements Runnable {
     private ArrayList<String> receiveQueue = new ArrayList<>();
     private ArrayList<String> reqQueue = new ArrayList<>();
 
+    private Random random;
+
     private String targetName = "";
     private int selfPort = -1;
 
@@ -41,6 +44,7 @@ public class P2PClient implements Runnable {
     }
 
     public P2PClient(String host, int port, String name, int localPort) throws UnknownHostException, SocketException {
+        random = new Random(System.currentTimeMillis());
         address = InetAddress.getByName(host);
         this.port = port;
         this.name = name;
@@ -109,12 +113,12 @@ public class P2PClient implements Runnable {
                 try {
                     p2pSocket = new P2PSocket(targetAddress, targetPort, selfPort);
                 } catch (UnknownHostException e) {
-                    disConnect();
+                    closeConnect();
                     throw new P2PClientException("Create Socket Fail!");
                 }
                 log("<=>  Create Socket: " + p2pSocket);
                 int j = 0;
-                while(++j <= 20) {
+                while(++j <= 10) {
                     try {
                         log("<=>  Send Hello");
                         p2pSocket.send("Hello");
@@ -123,17 +127,17 @@ public class P2PClient implements Runnable {
                         if("Hello".equals(hello)) {
                             p2pSocket.send("Hello");
                             log("<=> Connect to " + targetName + " Success!");
-                            completeConnect();
+                            closeConnect();
                             return p2pSocket;
                         }
                     } catch (TimeOutException ignored) {}
                 }
-                disConnect();
+                closeConnect();
                 throw new P2PClientException("Create Socket Time Out!");
             }
             try { Thread.sleep(slice);} catch (InterruptedException ignored) {}
         }
-        disConnect();
+        closeConnect();
         throw new P2PClientException("Connect Failed!");
     }
 
@@ -267,7 +271,10 @@ public class P2PClient implements Runnable {
 
     private void receiveP2P(String data) throws P2PClientException {
         if("NON".equals(data)) {
-            disConnect();
+            status = 2;
+            targetName = "";
+            selfPort = -1;
+            log("<=> Connect Close!");
             return;
         }
         if(status == 3) {
@@ -303,7 +310,7 @@ public class P2PClient implements Runnable {
                 log("< < " + targetName);
                 sendMessageToServer("CNT" + targetName);
             } else {
-                disConnect();
+                closeConnect();
             }
         } else if(status == 4) {
             sendMessageToServer("CNTPORT" + selfPort);
@@ -315,22 +322,14 @@ public class P2PClient implements Runnable {
     private void connectTo(String target) {
         status = 3;
         targetName = target;
-        selfPort = (int) (Math.random() * 1000) + 1000;
+        selfPort = (int) (random.nextDouble() * 1000) + 1000;
         updateFlag = 1;
     }
 
-    private void disConnect() {
-        status = 2;
-        targetName = "";
-        selfPort = -1;
-        log("<X< Connect Fail!");
-    }
-
-    private void completeConnect() {
+    private void closeConnect() {
         status = 6;
         targetName = "";
         selfPort = -1;
-        log("<=> Connect Complete!");
     }
 
     private void sendMessageToServer(String message) throws P2PClientException {
