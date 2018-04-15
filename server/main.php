@@ -17,8 +17,9 @@ $proxys;
 
 do {
     $packet = stream_socket_recvfrom($socket, 128, 0, $peer);
-    if($socket == "WHOAMI") {
+    if($packet == "WHOAMI") {
         stream_socket_sendto($socket, $peer, 0, $peer);
+        mylog("WHO AM I : " . $peer);
     } else {
         check();
         if(!$proxys[$peer])
