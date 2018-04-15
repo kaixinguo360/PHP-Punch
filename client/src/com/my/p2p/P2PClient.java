@@ -5,6 +5,7 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 public class P2PClient implements Runnable {
@@ -115,6 +116,7 @@ public class P2PClient implements Runnable {
         while(++i <= times) {
             if(status == 2) {
                 connectTo(target, p2pSocket.selfPort);
+                log("< < " + targetName);
             } else if(status == 5) {
                 try {
                     p2pSocket.setTarget(targetAddress, targetPort);
@@ -122,17 +124,14 @@ public class P2PClient implements Runnable {
                     closeConnect();
                     throw new P2PClientException("Set Socket Address Failed!");
                 }
-                log("<=>  Create Socket: " + p2pSocket);
                 int j = 0;
                 while(++j <= 10) {
                     try {
-                        log("<=>  Send Hello");
                         p2pSocket.send("Hello");
                         String hello = p2pSocket.receive(500);
-                        log("<=>  Receive: " + hello);
                         if("Hello".equals(hello)) {
                             p2pSocket.send("Hello");
-                            log("<=> Connect to " + targetName + " Success!");
+                            log("<=< Connect to " + targetName + " Success!");
                             closeConnect();
                             return p2pSocket;
                         }
@@ -292,7 +291,7 @@ public class P2PClient implements Runnable {
                     timeOut();
                 } else {
                     status = 3;
-                    log("<X< Info Error -- Retry...");
+                    log("<X< Info Error -- Retry...", 1);
                 }
             }
         } else if(status == 4) {
@@ -300,11 +299,11 @@ public class P2PClient implements Runnable {
                 targetPort = Integer.valueOf(data.substring(5));
                 status = 5;
                 log("<-< Prepared! -- Begin to build socket...");
-                log("    Self:   Name     -- " + name);
-                log("            Port     -- " + selfPort);
-                log("    Target: Name     -- " + targetName);
-                log("            Port     -- " + targetPort);
-                log("            Address  -- " + targetAddress);
+                log("    Self:   Name     -- " + name, 1);
+                log("            Port     -- " + selfPort, 1);
+                log("    Target: Name     -- " + targetName, 1);
+                log("            Port     -- " + targetPort, 1);
+                log("            Address  -- " + targetAddress, 1);
                 timeOut();
             }
         }
@@ -312,8 +311,7 @@ public class P2PClient implements Runnable {
 
     private void timeOutP2P() throws P2PClientException {
         if(status == 3) {
-            if(targetName != "") {
-                log("< < " + targetName);
+            if(!"".equals(targetName)) {
                 sendMessageToServer("CNT" + targetName);
             } else {
                 closeConnect();
@@ -478,12 +476,13 @@ public class P2PClient implements Runnable {
         }
     }
 
+
     /** --------------------------------- Test --------------------------------- **/
     public static void main(String[] args) throws UnknownHostException {
         P2PClient p2pClient = null;
 
         try {
-            p2pClient = new P2PClient("test.kaixinguo.site", 1234, "User-" + (int) (Math.random() * 1000));
+            p2pClient = new P2PClient("test.kaixinguo.site", 2018, "User-" + (int) (Math.random() * 1000));
         } catch (SocketException e) {
             e.printStackTrace();
             return;
@@ -503,10 +502,10 @@ public class P2PClient implements Runnable {
 
                 List reqs = p2pClient.getReq();
                 if(!reqs.isEmpty()) {
-                    System.out.println("Receive Request: " + reqs.get(0));
+                    System.out.println("- Receive Request: " + reqs.get(0));
                     try {
                         p2pSocket = p2pClient.agreeReq(0, 20000);
-                        System.out.println("Create P2PSocket Success! -- " + p2pSocket);
+                        System.out.println("- Create P2PSocket Success! -- " + p2pSocket);
                     } catch (P2PClientException | SocketException e) {
                         System.out.println("- Connect Fail...");
                     }
@@ -523,13 +522,13 @@ public class P2PClient implements Runnable {
                 String target = null;
                 if(names != null){
                     int j = 0;
-                    System.out.println("List Of User(" + names.size() + "): ");
+                    System.out.println("- List Of User(" + names.size() + "): ");
                     for(String name : names) {
                         if(p2pClient.name.equals(name)) {
-                            System.out.println("    [" + ++j + "] " + name + " [Self]");
+                            System.out.println("-     [" + ++j + "] " + name + " [Self]");
                         } else {
                             target = name;
-                            System.out.println("    [" + ++j + "] " + name);
+                            System.out.println("-     [" + ++j + "] " + name);
                         }
                     }
                 }
@@ -537,7 +536,7 @@ public class P2PClient implements Runnable {
                     try {
                         System.out.println("- Connect to " + target + "...");
                         p2pSocket = p2pClient.getSocketTo(target, 20000);
-                        System.out.println("Create P2PSocket Success! -- " + p2pSocket);
+                        System.out.println("- Create P2PSocket Success! -- " + p2pSocket);
                     } catch (P2PClientException | SocketException e) {
                         System.out.println("- Connect Fail...");
                     }
