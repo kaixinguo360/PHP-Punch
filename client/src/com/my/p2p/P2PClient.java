@@ -9,7 +9,7 @@ import java.util.Random;
 
 public class P2PClient implements Runnable {
 
-    private static int LOG_LEVEL = 2;
+    private static int LOG_LEVEL = 1;
     private static int DATA_LEN = 1024;
 
     private InetAddress address;
@@ -280,7 +280,7 @@ public class P2PClient implements Runnable {
             status = 2;
             targetName = "";
             selfPort = -1;
-            log("<=> Connect Close!");
+            log("=X= Connect Close!");
             return;
         }
         if(status == 3) {
