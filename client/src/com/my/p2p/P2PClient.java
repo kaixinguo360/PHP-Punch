@@ -456,6 +456,8 @@ public class P2PClient implements Runnable {
             return;
         }
 
+        P2PSocket p2pSocket = null;
+
         p2pClient.connect();
         int i = 0;
         while(i++ < 100) {
@@ -466,7 +468,7 @@ public class P2PClient implements Runnable {
                 if(!reqs.isEmpty()) {
                     System.out.println("Receive Request: " + reqs.get(0));
                     try {
-                        P2PSocket p2pSocket = p2pClient.agreeReq(0, 20000);
+                        p2pSocket = p2pClient.agreeReq(0, 20000);
                         System.out.println("Create P2PSocket Success! -- " + p2pSocket);
                     } catch (P2PClientException | SocketException e) {
                         System.out.println("- Connect Fail...");
@@ -497,12 +499,15 @@ public class P2PClient implements Runnable {
                 if(target != null) {
                     try {
                         System.out.println("- Connect to " + target + "...");
-                        P2PSocket p2pSocket = p2pClient.getSocketTo(target, 20000);
+                        p2pSocket = p2pClient.getSocketTo(target, 20000);
                         System.out.println("Create P2PSocket Success! -- " + p2pSocket);
                     } catch (P2PClientException | SocketException e) {
                         System.out.println("- Connect Fail...");
                     }
                 }
+            }
+            if(p2pSocket != null) {
+                break;
             }
         }
         //p2pClient.close();
