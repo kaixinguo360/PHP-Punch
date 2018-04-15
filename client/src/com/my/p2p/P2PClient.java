@@ -21,7 +21,6 @@ public class P2PClient implements Runnable {
 
     private byte[] inBuff = new byte[DATA_LEN];
     private DatagramPacket inPacket = new DatagramPacket(inBuff, inBuff.length, address, port);
-    private DatagramPacket outPacket;
     private ArrayList<String> sendQueue = new ArrayList<>();
     private ArrayList<String> receiveQueue = new ArrayList<>();
     private ArrayList<String> reqQueue = new ArrayList<>();
@@ -63,6 +62,12 @@ public class P2PClient implements Runnable {
         if(!thread.isAlive()) {
             status = 0;
             thread.start();
+        }
+    }
+
+    public void reLogin() {
+        if(thread.isAlive()) {
+            status = 0;
         }
     }
 
@@ -132,7 +137,7 @@ public class P2PClient implements Runnable {
                 }
             } else if(status == 5) {
                 try {
-                    p2pSocket.setTarget(targetAddress, targetPort);
+                    p2pSocket.setTarget(targetAddress, targetPort, targetName);
                 } catch (UnknownHostException e) {
                     closeConnect();
                     throw new P2PClientException("Set Socket Address Failed!");
@@ -352,7 +357,7 @@ public class P2PClient implements Runnable {
     private void sendMessageToServer(String message) throws P2PClientException {
         byte[] bytes = message.getBytes();
 
-        outPacket = new DatagramPacket(bytes, bytes.length, address, port);
+        DatagramPacket outPacket = new DatagramPacket(bytes, bytes.length, address, port);
         outPacket.setData(bytes);
         outPacket.setLength(bytes.length);
         outPacket.setAddress(address);
@@ -409,13 +414,13 @@ public class P2PClient implements Runnable {
 
     public class P2PSocket {
 
+        private String targetName;
         private InetAddress targetAddress;
         private int targetPort;
         private int selfPort = -1;
 
         private byte[] inBuff = new byte[DATA_LEN];
         private DatagramPacket inPacket;
-        private DatagramPacket outPacket;
         private DatagramSocket socket;
 
         private P2PSocket() throws SocketException, UnknownHostException, P2PClientException {
@@ -439,7 +444,7 @@ public class P2PClient implements Runnable {
                     String[] infos = selfInfo.split(":");
                     if(infos.length == 2) {
                         int port = Integer.valueOf(infos[1]);
-                        log("Self Port Is " + port);
+                        log("Self Port Is " + port, 1);
                         return port;
                     }
                 } catch (TimeOutException ignored) {}
@@ -447,12 +452,32 @@ public class P2PClient implements Runnable {
             throw new P2PClientException("Time Out!");
         }
 
-        private void setTarget(String targetAddress, int targetPort) throws UnknownHostException {
+        private void setTarget(String targetAddress, int targetPort, String targetName) throws UnknownHostException {
             this.targetAddress = InetAddress.getByName(targetAddress);
             this.targetPort = targetPort;
+            this.targetName = targetName;
 
         }
 
+
+        /** --------------------------------- Getter --------------------------------- **/
+        public String getTargetName() {
+            return targetName;
+        }
+
+        public InetAddress getTargetAddress() {
+            return targetAddress;
+        }
+
+        public int getTargetPort() {
+            return targetPort;
+        }
+
+        public DatagramSocket getSocket() {
+            return socket;
+        }
+
+        /** --------------------------------- Public --------------------------------- **/
         public String receive(int time) throws TimeOutException {
             try {
                 socket.setSoTimeout(time);
@@ -473,7 +498,7 @@ public class P2PClient implements Runnable {
         public void send(String message) throws P2PClientException {
             byte[] bytes = message.getBytes();
 
-            outPacket = new DatagramPacket(bytes, bytes.length, targetAddress, targetPort);
+            DatagramPacket outPacket = new DatagramPacket(bytes, bytes.length, targetAddress, targetPort);
             outPacket.setData(bytes);
             outPacket.setLength(bytes.length);
             outPacket.setAddress(targetAddress);
