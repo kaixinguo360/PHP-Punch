@@ -45,7 +45,9 @@ class Proxy {
                 $this -> status = -1;
             }
         } else if($this -> status >= 2) {
-            if($data != "HB") {
+            if(substr($data,0, 3) == "ACK") {
+                $this -> send("ACCEPT");
+            } else if($data != "HB") {
                 $this -> toDo($data);
             }
         }
@@ -74,9 +76,7 @@ class Proxy {
             return;
         }
         $data = substr($data, 3);
-        if($this -> status >= 5) {
-            $this -> p2p($data);
-        } else if($this -> status == 3) {
+        if($this -> status == 3) {
             $target = getProxy($data);
             if($target && ($target -> target == NULL || $target -> target == $this)) {
                 $info = $target -> touch($this);
@@ -101,11 +101,13 @@ class Proxy {
             } else {
                 $this -> disConnect();
             }
+        } else if($this -> status == 5) {
+            if(substr($data, 0, 4) == "PORT") {
+                if($this -> target -> selfPort) {
+                    $this -> send("CNTOK" . $this -> target -> selfPort);
+                }
+            }
         }
-    }
-    
-    function p2p($data){
-        
     }
     
     function touch($porxy){
