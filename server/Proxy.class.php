@@ -59,6 +59,8 @@ class Proxy {
             $this -> prepare($data);
         } else if($data == "LIST") {
             $this -> send("LIST" . getList());
+        } else if(substr($data,0, 3) == "NON") {
+            $this -> send("NON");
         } else if(substr($data,0, 3) == "CNT") {
             $this -> status = 3;
             $this -> prepare($data);
