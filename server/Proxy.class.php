@@ -9,11 +9,11 @@ class Proxy {
     
     /* 构造函数 */
     function __construct($socket1, $address1) {
+        $this -> lastHB =time();
         $this -> address = $address1;
         $this -> name = $address1;
         $this -> socket = $socket1;
         $this -> status = 0;
-        $this -> lastHB =time();
         $this -> mylog("Host " . $this -> address . " Connect...");
     }
     
