@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">P2P</string>
+
+    <string name="navigation_drawer_open">打开抽屉</string>
+    <string name="navigation_drawer_close">关闭抽屉</string>
+
+    <string name="action_settings">刷新</string>
+</resources>

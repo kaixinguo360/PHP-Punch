@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_users"
+            android:icon="@drawable/ic_menu_slideshow"
+            android:title="在线用户" />
+        <item
+            android:id="@+id/nav_requests"
+            android:icon="@drawable/ic_menu_send"
+            android:title="连接请求" />
+        <item
+            android:id="@+id/nav_connects"
+            android:icon="@drawable/ic_menu_gallery"
+            android:title="已连接" />
+    </group>
+
+    <item android:title="操作">
+        <menu>
+            <item
+                android:id="@+id/nav_share"
+                android:icon="@drawable/ic_menu_share"
+                android:title="分享" />
+            <item
+                android:id="@+id/nav_send"
+                android:icon="@drawable/ic_menu_camera"
+                android:title="发送" />
+        </menu>
+    </item>
+
+</menu>
