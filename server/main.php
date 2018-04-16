@@ -18,11 +18,6 @@ $proxys;
 $relays;
 
 
-/** Test **/
-
-new Relay(0,0, null);
-
-
 /** Main Loop **/
 
 do {
