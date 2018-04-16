@@ -108,6 +108,18 @@ class Proxy {
                 if($this -> target -> selfPort) {
                     $this -> send("CNTOK" . $this -> target -> selfPort);
                 }
+            } else if($data == "FAILED") {
+                $this -> status = 6;
+                $this -> mylog($this -> name . " >_> " . $this -> target -> name . " Retry With Relay...");
+                $selfAddress = explode(':' ,$this -> address)[0];
+                $targetAddress = explode(':' ,$this -> target -> address)[0];
+                createRelay($selfAddress . ":" . $this -> selfPort, $targetAddress . ":" . $this -> target -> selfPort);
+                //TODO...CREATE A RELAY
+                $this -> send("RELAY");
+            }
+        } else if($this -> status == 6) {
+            if($data == "FAILED") {
+                $this -> send("RELAY");
             }
         }
     }
@@ -128,10 +140,10 @@ class Proxy {
         $this -> selfPort = NULL;
     }
     
-    function check(){
+    function isAlive(){
         $time = time() - $this -> lastHB;
         
-        if($time < 15) {
+        if($time < TTL_PROXY) {
             return true;
         } else {
             return false;
