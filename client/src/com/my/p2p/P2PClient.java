@@ -5,12 +5,11 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 
 public class P2PClient implements Runnable {
 
-    private static int LOG_LEVEL = 1;
+    private static int LOG_LEVEL =2;
     private static int DATA_LEN = 1024;
 
     private InetAddress address;
@@ -35,6 +34,8 @@ public class P2PClient implements Runnable {
 
     private int updateFlag = 0;
     private int status = -2;
+
+    private boolean useRelay = false;
 
     private Thread thread;
 
@@ -135,7 +136,7 @@ public class P2PClient implements Runnable {
                     closeConnect();
                     throw new P2PClientException("Retry time out!");
                 }
-            } else if(status == 5) {
+            } else if(status == 5 || status == 7) {
                 try {
                     p2pSocket.setTarget(targetAddress, targetPort, targetName);
                 } catch (UnknownHostException e) {
@@ -155,8 +156,18 @@ public class P2PClient implements Runnable {
                         }
                     } catch (TimeOutException ignored) {}
                 }
-                closeConnect();
-                throw new P2PClientException("Create Socket Time Out!");
+                if(status == 5) {
+                    if(useRelay) {
+                        useRelay();
+                        log("P2P Connect Failed, Retry With Relay...");
+                    } else {
+                        closeConnect();
+                        throw new P2PClientException("Create Socket Time Out!");
+                    }
+                } else if(status == 7) {
+                    closeConnect();
+                    throw new P2PClientException("Create Socket With Relay Time Out!");
+                }
             }
             try { Thread.sleep(slice);} catch (InterruptedException ignored) {}
         }
@@ -183,6 +194,10 @@ public class P2PClient implements Runnable {
 
     public String getName() {
         return name;
+    }
+
+    public void setUseRelay(boolean useRelay) {
+        this.useRelay = useRelay;
     }
 
     public void run() {
@@ -324,6 +339,19 @@ public class P2PClient implements Runnable {
                 log("            Address  -- " + targetAddress, 1);
                 timeOut();
             }
+        } else if(status == 6) {
+            if("RELAY".equals(data)) {
+                targetAddress = address.getHostAddress();
+                targetPort = port;
+                status = 7;
+                log("<_< Relay! -- Begin to build socket...");
+                log("    Self:   Name     -- " + name, 1);
+                log("            Port     -- " + selfPort, 1);
+                log("    Target: Name     -- " + targetName, 1);
+                log("            Port     -- " + targetPort, 1);
+                log("            Address  -- " + targetAddress, 1);
+                timeOut();
+            }
         }
     }
 
@@ -337,6 +365,8 @@ public class P2PClient implements Runnable {
         } else if(status == 4) {
             sendMessageToServer("CNTPORT" + selfPort);
         } else if(status == 6) {
+            sendMessageToServer("CNTFAILED");
+        } else if(status == 10) {
             sendMessageToServer("NON");
         }
     }
@@ -349,9 +379,13 @@ public class P2PClient implements Runnable {
     }
 
     private void closeConnect() {
-        status = 6;
+        status = 10;
         targetName = "";
         selfPort = -1;
+    }
+
+    private void useRelay() {
+        status = 6;
     }
 
     private void sendMessageToServer(String message) throws P2PClientException {
@@ -521,6 +555,7 @@ public class P2PClient implements Runnable {
 
         try {
             p2pClient = new P2PClient("test.kaixinguo.site", 2018, "User-" + (int) (Math.random() * 1000));
+            p2pClient.setUseRelay(true);
         } catch (SocketException e) {
             e.printStackTrace();
             return;
@@ -542,7 +577,7 @@ public class P2PClient implements Runnable {
                 if(!reqs.isEmpty()) {
                     System.out.println("- Receive Request: " + reqs.get(0));
                     try {
-                        p2pSocket = p2pClient.agreeReq(0, 20000);
+                        p2pSocket = p2pClient.agreeReq(0, 40000);
                         System.out.println("- Create P2PSocket Success! -- " + p2pSocket);
                     } catch (P2PClientException | SocketException e) {
                         System.out.println("- Connect Fail...");
@@ -573,7 +608,7 @@ public class P2PClient implements Runnable {
                 if(target != null) {
                     try {
                         System.out.println("- Connect to " + target + "...");
-                        p2pSocket = p2pClient.getSocketTo(target, 20000);
+                        p2pSocket = p2pClient.getSocketTo(target, 40000);
                         System.out.println("- Create P2PSocket Success! -- " + p2pSocket);
                     } catch (P2PClientException | SocketException e) {
                         System.out.println("- Connect Fail...");
