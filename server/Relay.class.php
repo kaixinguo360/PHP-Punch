@@ -9,6 +9,8 @@ class Relay{
     
     /* 构造函数 */
     function __construct($peer1, $peer2, $socket) {
+        $this -> lastHB = time();
+        
         $this -> peer1 = $peer1;
         $this -> peer2 = $peer2;
         
