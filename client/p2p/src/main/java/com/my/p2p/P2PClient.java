@@ -12,17 +12,17 @@ import java.util.List;
 
 public class P2PClient implements Runnable {
 
-    private static final int LOG_LEVEL = 1;
+    public static int LOG_LEVEL = 1;
     private static final int DATA_LEN = 1024;
 
-    private InetAddress address;
-    private int port;
+    private InetAddress serverAddress;
+    private int serverPort;
     private DatagramSocket socket;
 
-    private String name;
+    private String selfName;
 
     private final byte[] inBuff = new byte[DATA_LEN];
-    private final DatagramPacket inPacket = new DatagramPacket(inBuff, inBuff.length, address, port);
+    private final DatagramPacket inPacket = new DatagramPacket(inBuff, inBuff.length, serverAddress, serverPort);
     private final ArrayList<String> sendQueue = new ArrayList<>();
     private final ArrayList<String> receiveQueue = new ArrayList<>();
     private final ArrayList<String> reqQueue = new ArrayList<>();
@@ -41,14 +41,14 @@ public class P2PClient implements Runnable {
     private Thread thread;
 
     /** --------------------------------- Constructor --------------------------------- **/
-    public P2PClient(String host, int port, String name) throws UnknownHostException, SocketException {
-        this(host, port, name, -1);
+    public P2PClient(String serverAddress, int serverPort, String selfName) throws UnknownHostException, SocketException {
+        this(serverAddress, serverPort, selfName, -1);
     }
 
-    public P2PClient(String host, int port, String name, int localPort) throws UnknownHostException, SocketException {
-        address = InetAddress.getByName(host);
-        this.port = port;
-        this.name = name;
+    public P2PClient(String serverAddress, int serverPort, String selfName, int localPort) throws UnknownHostException, SocketException {
+        this.serverAddress = InetAddress.getByName(serverAddress);
+        this.serverPort = serverPort;
+        this.selfName = selfName;
         if(localPort < 0) {
             socket = new DatagramSocket();
         } else {
@@ -188,7 +188,7 @@ public class P2PClient implements Runnable {
     }
 
     public String getName() {
-        return name;
+        return selfName;
     }
 
     public void setUseRelay(boolean useRelay) {
@@ -197,9 +197,9 @@ public class P2PClient implements Runnable {
 
     public void run() {
         status = 0;
-        log("User_Name:       " + name);
-        log("Server_Address:  " + address);
-        log("Server_Port:     " + port);
+        log("User_Name:       " + selfName);
+        log("Server_Address:  " + serverAddress);
+        log("Server_Port:     " + serverPort);
         log("Connecting to server...");
         try {
             mainLoop();
@@ -300,7 +300,7 @@ public class P2PClient implements Runnable {
         if(status == 0) {
             sendMessageToServer("SYN");
         } else if(status == 1) {
-            sendMessageToServer("ACK" + name);
+            sendMessageToServer("ACK" + selfName);
         } else if(status >= 3) {
             timeOutP2P();
         }
@@ -331,7 +331,7 @@ public class P2PClient implements Runnable {
                 targetPort = Integer.valueOf(data.substring(5));
                 status = 5;
                 log("<-< Prepared! -- Begin to build socket...");
-                log("    Self:   Name     -- " + name, 1);
+                log("    Self:   Name     -- " + selfName, 1);
                 log("            Port     -- " + selfPort, 1);
                 log("    Target: Name     -- " + targetName, 1);
                 log("            Port     -- " + targetPort, 1);
@@ -340,11 +340,11 @@ public class P2PClient implements Runnable {
             }
         } else if(status == 6) {
             if("RELAY".equals(data)) {
-                targetAddress = address.getHostAddress();
-                targetPort = port;
+                targetAddress = serverAddress.getHostAddress();
+                targetPort = serverPort;
                 status = 7;
                 log("<_< Relay! -- Begin to build socket...");
-                log("    Self:   Name     -- " + name, 1);
+                log("    Self:   Name     -- " + selfName, 1);
                 log("            Port     -- " + selfPort, 1);
                 log("    Target: Name     -- " + targetName, 1);
                 log("            Port     -- " + targetPort, 1);
@@ -390,11 +390,11 @@ public class P2PClient implements Runnable {
     private void sendMessageToServer(String message) throws SendMessageException {
         byte[] bytes = message.getBytes();
 
-        DatagramPacket outPacket = new DatagramPacket(bytes, bytes.length, address, port);
+        DatagramPacket outPacket = new DatagramPacket(bytes, bytes.length, serverAddress, serverPort);
         outPacket.setData(bytes);
         outPacket.setLength(bytes.length);
-        outPacket.setAddress(address);
-        outPacket.setPort(port);
+        outPacket.setAddress(serverAddress);
+        outPacket.setPort(serverPort);
 
         try {
             socket.send(outPacket);
@@ -410,7 +410,7 @@ public class P2PClient implements Runnable {
 
     private void log(String message, int p) {
         if(p < LOG_LEVEL) {
-            System.out.println(name + " " + message);
+            System.out.println(selfName + " " + message);
         }
     }
 
@@ -471,9 +471,9 @@ public class P2PClient implements Runnable {
 
         private P2PSocket() throws SocketException, P2PClientException {
             socket = new DatagramSocket();
-            inPacket = new DatagramPacket(inBuff, inBuff.length, address, port);
-            this.targetAddress = address;
-            this.targetPort = port;
+            inPacket = new DatagramPacket(inBuff, inBuff.length, serverAddress, serverPort);
+            this.targetAddress = serverAddress;
+            this.targetPort = serverPort;
             this.selfPort = getSelfPort();
         }
 
@@ -609,7 +609,7 @@ public class P2PClient implements Runnable {
                     int j = 0;
                     System.out.println("- List Of User(" + names.size() + "): ");
                     for(String name : names) {
-                        if(p2pClient.name.equals(name)) {
+                        if(p2pClient.selfName.equals(name)) {
                             System.out.println("-     [" + ++j + "] " + name + " [Self]");
                         } else {
                             target = name;

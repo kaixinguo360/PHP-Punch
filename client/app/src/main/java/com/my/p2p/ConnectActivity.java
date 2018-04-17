@@ -99,6 +99,7 @@ public class ConnectActivity extends AppCompatActivity {
 
     public void send(View view) {
         textToSend = editText.getText().toString();
+        editText.setText("");
     }
 
     private static class ConnectHandler extends Handler {
