@@ -3,16 +3,16 @@
 
 /** Init **/
 
-error_reporting(E_ALL);
+//error_reporting(E_ALL);
 set_time_limit(0);
 define("LOG_LEVEL", 2);
 define("TTL_PROXY", 15);
-define("TTL_RELAY", 15);
+define("TTL_RELAY", 30);
 require_once 'Proxy.class.php';
 require_once 'MyLoger.class.php';
 require_once 'Relay.class.php';
 
-$myloger = new MyLoger("log.txt");
+$myloger = new MyLoger();
 $socket = getSocket(0, 2018);
 $proxys;
 $relays;
@@ -21,7 +21,7 @@ $relays;
 /** Main Loop **/
 
 do {
-    $beginTime = microtime(true);
+    //$beginTime = microtime(true);
     $packet = stream_socket_recvfrom($socket, 128, 0, $peer);
     if(!checkRelay($peer, $packet)) {
         if($packet == "WHOAMI") {
@@ -34,9 +34,9 @@ do {
             $proxys[$peer] -> receive($packet);
         }
     }
-    if(microtime(true) - $beginTime < 100000) {
-        usleep(100000);
-    }
+    //if(microtime(true) - $beginTime < 100000) {
+    //    usleep(100000);
+    //}
 } while (true);
 
 
@@ -44,14 +44,16 @@ do {
 
 function checkRelay($peer, $packet) {
     global $relays;
-    foreach ($relays as $address => $relay) {
-        if($address == $peer) {
-            $relay -> receive($peer, $packet);
-            return true;
-        } else {
-            if(!$relay -> isAlive()) {
-                mylog("Relay Close ! " . $relay -> peer1 . " <==> " . $relay -> peer2);
-                removeRelay($relay);
+    if($relays != null) {
+        foreach ($relays as $address => $relay) {
+            if($address == $peer) {
+                $relay -> receive($peer, $packet);
+                return true;
+            } else {
+                if(!$relay -> isAlive()) {
+                    mylog("Relay Close ! " . $relay -> peer1 . " <==> " . $relay -> peer2);
+                    removeRelay($relay);
+                }
             }
         }
     }
@@ -90,7 +92,7 @@ function getProxy($name) {
 
 function getList() {
     global $proxys;
-    $list;
+    $list = "";
     foreach ($proxys as $address => $proxy) {
         if($proxy -> status >= 2) {
             $list = $list . $proxy -> name . "\n";
@@ -101,10 +103,12 @@ function getList() {
 
 function updateUser() {
     global $proxys;
-    foreach ($proxys as $address => $proxy) {
-        if(!$proxy -> isAlive()) {
-            mylog($proxys[$address] -> name . " -X- Lost !");
-            unset($proxys[$address]);
+    if($proxys != null) {
+        foreach ($proxys as $address => $proxy) {
+            if(!$proxy -> isAlive()) {
+                mylog($proxys[$address] -> name . " -X- Lost !");
+                unset($proxys[$address]);
+            }
         }
     }
 }

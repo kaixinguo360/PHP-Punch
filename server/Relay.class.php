@@ -22,7 +22,7 @@ class Relay{
     /* 成员函数 */
     function receive($peer, $data){
         $this -> lastHB = time();
-        mylog("===>" . $data);
+        mylog($peer . "===>" . $data);
         if($peer == $this -> peer1) {
             $this -> send($this -> peer2, $data);
         } else if($peer == $this -> peer2) {
@@ -31,7 +31,7 @@ class Relay{
     }
     
     function send($peer, $data){
-        $this -> mylog($this -> name . " <=== " . $data, 1);
+        $this -> mylog($peer . " <=== " . $data, 1);
         stream_socket_sendto($this -> socket, $data, 0, $peer);
     }
     
